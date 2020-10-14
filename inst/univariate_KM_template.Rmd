@@ -1,0 +1,81 @@
+
+`r var` {data-navmenu="Univariate survival analysis"}
+======================================  
+
+### KM plot
+
+```{r}
+object_var <- extract_OS_rate(x = data_surv,
+                            variable = var,
+                            times = timepoint)
+  
+  print(object_var$plots)
+  # 
+  # pic_path <- 'tmp.png'
+  # png(filename = pic_path)
+  # plot(object_var$plots)
+  # dev.off()
+  
+```
+
+### summary table
+
+```{r}
+kable(object_var$OS_table) 
+```
+
+### Pairwise comparison
+
+Values in table are p-values for each subset data between group 1 and group 2.
+
+```{r}
+
+pairwise_models <- build_pairwise_logrank(data_surv,
+                      variables =var,
+                      p.adjust.method = 'fdr',
+                      pivot_wider = FALSE
+                       )
+kable(pairwise_models)
+```
+
+
+```{r}
+if(!is.na(wb)){
+  
+  sheet_name <- paste0('uni_KM_', var)
+  sheet_name <- substring(sheet_name, 1, min(stringr::str_length(sheet_name), 31))
+  
+  openxlsx::addWorksheet(wb,sheet = sheet_name)
+  openxlsx::writeData(wb,
+            sheet = sheet_name,
+            x = object_var$OS_table,
+            startCol = 1,
+            startRow = 1)
+  # openxlsx::saveWorkbook(wb, xlsx_path, overwrite = TRUE)
+  print(object_var$plots)
+  openxlsx::insertPlot(wb, sheet_name, xy = c(ncol(object_var$OS_table) + 3, 1), width = 16, height = 10, fileType = "png", units = "cm")
+
+  
+  # openxlsx::insertImage(wb, 
+  #                       sheet_name,
+  #                       pic_path,
+  #                       startRow = 1,
+  #                       startCol = ncol(object_var$OS_table) + 3)
+
+  writeData(wb, sheet_name, "Pairwise comparison of KM curves", 
+            startCol = 1, 
+            startRow = nrow(object_var$OS_table) + 2)
+    openxlsx::writeData(wb,
+            sheet = sheet_name,
+            x = pairwise_models,
+            startCol = 1,
+            startRow = nrow(object_var$OS_table) + 3)
+    
+     # unlink(pic_path)
+
+      openxlsx::saveWorkbook(wb, xlsx_path, overwrite = TRUE)
+
+}
+
+```
+

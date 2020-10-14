@@ -1,0 +1,252 @@
+---
+output:
+  flexdashboard::flex_dashboard:
+    vertical_layout: scroll
+    horizontal_layout: scroll
+    toc: yes
+params:
+  set_title: 'Automated surv report'
+  data_surv: NULL
+  main_variable: NULL
+  important_single_variables: NULL
+  group_variables: NULL
+  ignored_variables: NULL
+  strata_variables: NULL
+  path_to_script: NULL
+  OS_rate_timepoint: 5*365.25
+  xlsx_path: NULL
+title: "`r params$set_title`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(flexdashboard)
+library(knitr)
+library(survival)
+
+```
+
+```{r}
+data_surv <- params$data_surv
+main_variable <- params$main_variable
+important_single_variables <- params$important_single_variables
+group_variables <- params$group_variables
+ignored_variables <- params$ignored_variables
+strata_variables <- params$strata_variables
+OS_rate_timepoint <- params$OS_rate_timepoint
+xlsx_path <- params$xlsx_path
+
+```
+
+```{r}
+if(!is.null(xlsx_path)){
+   # if(!file.exists(xlsx_path)){
+    wb <- openxlsx::createWorkbook()
+   # }else{
+   #   wb <- openxlsx::copyWorkbook()
+   # }
+   # 
+}else{
+    wb <- NA
+  }
+
+```
+
+
+Overall summary 
+=====================================
+Column {data-width=200, data-height=1000}
+-----------------------------------------
+
+
+```{r}
+create_table1(x = data_surv, strata_variables = main_variable, add_pvalue = TRUE)
+
+```
+
+
+<!-- Univariate survival analysis -->
+
+```{r render univariate_KM, include=FALSE}
+
+options(knitr.duplicate.label = 'allow')
+
+out <- c()
+for(var in important_single_variables){
+    subpage_env <- new.env()
+
+     assign('data_surv', data_surv, subpage_env)
+     assign("var", var, subpage_env)
+     assign("timepoint", OS_rate_timepoint, subpage_env)
+     assign("wb", wb, subpage_env)
+     assign('xlsx_path', xlsx_path, subpage_env)
+     # Knit subpage.RMD using the subpage_env and add result to out vector
+     out = c(out, knitr::knit_child('univariate_KM_template.Rmd', envir = subpage_env))
+}
+```
+
+`r paste(knitr::knit_child(text = out), collapse = '')` 
+
+
+<!-- Grouped survival analysis -->
+
+```{r render grouped_KM, include=FALSE}
+
+options(knitr.duplicate.label = 'allow')
+
+if(!is.null(group_variables)){
+  
+  out <- c()
+  for(group_list in group_variables){
+    
+    subpage_env <- new.env()
+
+     assign('data_surv', data_surv, subpage_env)
+     assign("variable", group_list[['variable']], subpage_env)
+     assign("group", group_list[['group']], subpage_env)
+     assign('OS_rate_timepoint', OS_rate_timepoint, subpage_env)
+     # Knit subpage.RMD using the subpage_env and add result to out vector
+     out = c(out, knitr::knit_child('grouped_KM_template.Rmd', envir = subpage_env))
+    
+  }
+}
+```
+
+`r paste(knitr::knit_child(text = out), collapse = '')` 
+
+Univariate Cox model
+=====================================
+
+## pvalue - univariate Cox
+
+```{r}
+signif_vars <- extract_signif_vars_cox (x = data_surv)
+kable(signif_vars$pvalue)
+
+
+```
+
+## significant variable
+
+```{r}
+kable(signif_vars$significant_vars_list$all)
+```
+
+
+Multivariate Cox model
+=====================================
+
+##
+
+```{r}
+vars_to_multivar <- setdiff(unique(c(important_single_variables,unlist(signif_vars$significant_vars_list))),
+                                   ignored_variables)
+cox_model <- build_surv_model(x = data_surv,
+                 variables = vars_to_multivar,
+                 model_type = 'coxph')
+broom::tidy(cox_model, exponentiate = TRUE) %>%
+  kable()
+
+
+```
+
+
+```{r}
+if(!is.na(wb)){
+  
+  sheet_name <- paste0('multi_CoxPH')
+  sheet_name <- substring(sheet_name, 1, min(stringr::str_length(sheet_name), 31))
+  
+  openxlsx::addWorksheet(wb,sheet = sheet_name)
+  
+  openxlsx::writeData(wb,
+            sheet = sheet_name,
+            x = broom::tidy(cox_model, exponentiate = TRUE) ,
+            startCol = 1,
+            startRow = 3)
+ 
+
+      openxlsx::saveWorkbook(wb, xlsx_path, overwrite = TRUE)
+
+}
+
+```
+
+
+Multivariate Cox model - grouped
+=====================================
+
+##
+
+```{r  results='asis'}
+vars_to_multivar <- setdiff(unique(c(important_single_variables,unlist(signif_vars$significant_vars_list))),
+                                   ignored_variables)
+cox_model_list <- build_surv_model(x = data_surv,
+                 variables = vars_to_multivar,
+                 model_type = 'coxph',
+                 group_by = strata_variables)
+
+  if(!is.na(wb)){
+  
+  sheet_name <- paste0('multi_CoxPH_grouped')
+  openxlsx::addWorksheet(wb,sheet = sheet_name)
+  }
+
+
+for(i in seq_along(cox_model_list)){
+  cat('###', names(cox_model_list)[i], '\n\n')
+  
+  kable(broom::tidy(cox_model_list[[i]], exp=TRUE)) %>% print()
+  
+    if(!is.na(wb)){
+      
+        openxlsx::writeData(wb,
+              sheet = sheet_name,
+              x = names(cox_model_list)[i],
+              startCol = 5*(i-1)+2,
+              startRow = 1)
+  
+    openxlsx::writeData(wb,
+              sheet = sheet_name,
+              x = broom::tidy(cox_model_list[[i]], exp=TRUE),
+              startCol = 5*(i-1)+2,
+              startRow = 2)
+   
+  
+        openxlsx::saveWorkbook(wb, xlsx_path, overwrite = TRUE)
+  
+  }
+  
+  
+  cat('\n')
+}
+
+# lapply(cox_model_list, function(x) kable(broom::tidy(x, exponentiate = TRUE)))
+
+
+
+```
+
+
+<!-- Multivariate Cox model - strata -->
+<!-- ===================================== -->
+
+<!-- ## -->
+
+<!-- ```{r} -->
+<!-- vars_to_multivar <- setdiff(unique(c(important_single_variables,unlist(signif_vars$significant_vars_list))), -->
+<!--                                    ignored_variables) -->
+<!-- cox_model <- build_surv_model(x = data_surv, -->
+<!--                  variables = vars_to_multivar, -->
+<!--                  strata_variables = strata_variables, -->
+<!--                  model_type = 'coxph') -->
+<!-- broom::tidy(cox_model) %>% -->
+<!--   kable() -->
+
+
+<!-- ``` -->
+
+
+```{r child = params$path_to_script}
+
+```
