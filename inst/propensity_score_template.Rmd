@@ -1,0 +1,81 @@
+
+
+
+```{r}
+
+data_psm <- propensity_matching(x = data_surv,
+                    vars_to_matching = psm_vars,
+                    var_treat = psm_treat,
+                    var_group = psm_group,
+                    control_indicator = 'ST_4L_EXAMINED',
+                    ratio = 1)
+
+data_psm_surv <- survData(data = data_psm,
+              time_column = data_surv$time_column,
+              event_column = data_surv$event_column,
+              descriptive_columns = data_surv$descriptive_columns)
+
+
+
+```
+
+
+Overall summary {data-navmenu="PSM" }
+=====================================
+Column {data-width=200, data-height=1000}
+-----------------------------------------
+
+
+```{r}
+
+create_table1(x = data_psm_surv, strata_variables = main_variable, add_pvalue = TRUE)
+
+```
+
+
+```{r render univariate_KM_PSM, include=FALSE}
+
+options(knitr.duplicate.label = 'allow')
+
+out <- c()
+for(var in important_single_variables){
+    subpage_env <- new.env()
+
+     assign('data_surv', data_psm_surv, subpage_env)
+     assign("var", var, subpage_env)
+     assign("timepoint", OS_rate_timepoint, subpage_env)
+     assign("wb", wb, subpage_env)
+     assign('xlsx_path', xlsx_path, subpage_env)
+     # Knit subpage.RMD using the subpage_env and add result to out vector
+     out = c(out, knitr::knit_child('univariate_KM_PSM_template.Rmd', envir = subpage_env))
+}
+```
+
+`r paste(knitr::knit_child(text = out), collapse = '')` 
+
+
+
+```{r render grouped_KM_PSM, include=FALSE}
+
+options(knitr.duplicate.label = 'allow')
+
+if(!is.null(group_variables)){
+  
+  out <- c()
+  for(group_list in group_variables){
+    
+    subpage_env <- new.env()
+
+     assign('data_surv', data_psm_surv, subpage_env)
+     assign("variable", group_list[['variable']], subpage_env)
+     assign("group", group_list[['group']], subpage_env)
+     assign('OS_rate_timepoint', OS_rate_timepoint, subpage_env)
+     # Knit subpage.RMD using the subpage_env and add result to out vector
+     out = c(out, knitr::knit_child('grouped_KM_PSM_template.Rmd', envir = subpage_env))
+    
+  }
+}
+```
+
+`r paste(knitr::knit_child(text = out), collapse = '')` 
+

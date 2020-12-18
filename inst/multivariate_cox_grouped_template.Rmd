@@ -1,0 +1,53 @@
+Multivariate Cox model - grouped
+=====================================
+
+##
+
+```{r  results='asis', eval=create_model}
+vars_to_multivar <- setdiff(unique(c(important_single_variables,unlist(signif_vars$significant_vars_list))),
+                                   ignored_variables)
+cox_model_list <- build_surv_model(x = data_surv,
+                 variables = vars_to_multivar,
+                 model_type = 'coxph',
+                 group_by = strata_variables)
+
+  if(!is.na(wb)){
+
+  sheet_name <- paste0('multi_CoxPH_grouped')
+  openxlsx::addWorksheet(wb,sheet = sheet_name)
+  }
+
+
+for(i in seq_along(cox_model_list)){
+  cat('###', names(cox_model_list)[i], '\n\n')
+
+  kable(broom::tidy(cox_model_list[[i]], exp=TRUE)) %>% print()
+
+    if(!is.na(wb)){
+
+        openxlsx::writeData(wb,
+              sheet = sheet_name,
+              x = names(cox_model_list)[i],
+              startCol = 5*(i-1)+2,
+              startRow = 1)
+
+    openxlsx::writeData(wb,
+              sheet = sheet_name,
+              x = broom::tidy(cox_model_list[[i]], exp=TRUE),
+              startCol = 5*(i-1)+2,
+              startRow = 2)
+
+
+        openxlsx::saveWorkbook(wb, xlsx_path, overwrite = TRUE)
+
+  }
+
+
+  cat('\n')
+}
+
+# lapply(cox_model_list, function(x) kable(broom::tidy(x, exponentiate = TRUE)))
+
+
+
+```

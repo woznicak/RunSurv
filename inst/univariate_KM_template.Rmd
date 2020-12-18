@@ -62,7 +62,7 @@ if(!is.na(wb)){
   #                       startRow = 1,
   #                       startCol = ncol(object_var$OS_table) + 3)
 
-  writeData(wb, sheet_name, "Pairwise comparison of KM curves", 
+  openxlsx::writeData(wb, sheet_name, "Pairwise comparison of KM curves", 
             startCol = 1, 
             startRow = nrow(object_var$OS_table) + 2)
     openxlsx::writeData(wb,

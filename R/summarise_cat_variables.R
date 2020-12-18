@@ -1,3 +1,8 @@
+pval_format_txt <- function(pvalue, threshold = 1e-04){
+  pval.txt <- ifelse(pvalue < threshold, paste("p < ",format(threshold, scientific = FALSE)),
+                     paste("p =", signif(pvalue, 2)))
+  pval.txt
+}
 
 
 
@@ -47,8 +52,7 @@ extract_OS_rate <- function(x,
   stopifnot(is.factor(x$data[, variable]))
   stopifnot(length(variable) == 1)
 
-
-
+  #
   KM_model <- build_surv_model(x, variables = variable, group_by = group_by,model_type = 'survfit')
   no_levels_var <- nlevels(x$data[,variable])
   KM_palette = RColorBrewer::brewer.pal(max(no_levels_var, 3),'Set1')
@@ -69,9 +73,21 @@ extract_OS_rate <- function(x,
     KM_palette_single_model <- unname(KM_palette[levels(droplevels(x$data[, variable]))])
 
     OS_rate <- extract_OS_rate_logrank_(KM_model, times, digits = 2)
-    p_value_KM_curve <-  survminer::surv_pvalue(KM_model, x$data)
+    # if(is.null(x$weights)){
+    #   p_value_KM_curve <-  survminer::surv_pvalue(KM_model, x$data)$pval
+    # }else{
+    #   p_value <- build_surv_model(x, variables = variable, model_type = 'logrank')$p.value
+    #   p_value_KM_curve <-ifelse(is.na(p_value), FALSE, p_value)
+    # }
+
+    p_value <- build_surv_model(x, variables = variable, model_type = 'logrank')$p.value
+    p_value_KM_curve <- pval_format_txt(p_value)
+    p_value_KM_curve <-ifelse(is.na(p_value_KM_curve), FALSE, p_value_KM_curve)
+
+
+
     KM_plots <- survminer::ggsurvplot(KM_model, x$data,
-                                           pval = TRUE,
+                                           pval = p_value_KM_curve,
                                            surv.scale = 'percent',
                                            xscale = 'd_y',
                                            xlab="Time in years",
@@ -83,7 +99,7 @@ extract_OS_rate <- function(x,
 
   }else if (inherits(KM_model, 'list')){
 
-      # browser()
+       # browser()
     OS_rate_list <- lapply(KM_model, function(model) extract_OS_rate_logrank_(model, times, digits = 2))
     OS_rate <- do.call(rbind, OS_rate_list)
     group_column_vec <- gsub(x = rownames(OS_rate), pattern = '\\..+', '', perl = TRUE)
@@ -97,24 +113,42 @@ extract_OS_rate <- function(x,
 
 
     df_split <- lapply(KM_model, function(x) x$call$data)
+    # p_value_KM_curve <- do.call(rbind, survminer::surv_pvalue(KM_model, df_split))
+     # browser()
+      logrank_to_pvalue <- build_surv_model(x,
+                       variables = variable,
+                       strata_variables = NULL,
+                       model_type =  'logrank',
+                       group_by = group_by)
+      ## simplify label
+      if(simplify_label){
+        # new_label <- gsub(paste0(paste0('(', group_by, ':)'), collapse = '|'), '', names(KM_model), perl = TRUE)
+        names(logrank_to_pvalue) <- new_label
+      }
+      logrank_to_pvalue <- lapply(logrank_to_pvalue, data.frame)
 
-    p_value_KM_curve <- do.call(rbind, survminer::surv_pvalue(KM_model, df_split))
-    p_value_KM_curve <- cbind(group = rownames(p_value_KM_curve), p_value_KM_curve)
-    rownames(p_value_KM_curve) <- NULL
+      p_value_KM_curve <- do.call(rbind, logrank_to_pvalue)
+      p_value_KM_curve <- subset(p_value_KM_curve, select = -chisq)
+      p_value_KM_curve <- cbind(group = rownames(p_value_KM_curve), p_value_KM_curve)
+      p_value_KM_curve$p.value <- pval_format_txt(p_value_KM_curve$p.value )
 
-    OS_rate <- merge(OS_rate, p_value_KM_curve[, c('group', 'pval.txt')], by = 'group')
-    # browser()
+      rownames(p_value_KM_curve) <- NULL
+      p_value_list <- lapply(logrank_to_pvalue, function(logrank_to_pvalue_i) if(is.na(logrank_to_pvalue_i$p.value)) FALSE
+                                                                                 else pval_format_txt(logrank_to_pvalue_i$p.value))
+
+
+    OS_rate <- merge(OS_rate, p_value_KM_curve[, c('group', 'p.value')], by = 'group')
+      # browser()
 
     KM_palette_list <- lapply(df_split, function(x) unname(KM_palette[levels(droplevels(x[, variable]))]))
 
 
     # apply
-    KM_plots <- mapply(FUN = function(fit, data, palette, title, ...)
-        survminer::ggsurvplot(fit = fit, data = data, palette = palette, title = title,...)$plot+
+    KM_plots <- mapply(FUN = function(fit, data, palette, title, p.value, ...)
+        survminer::ggsurvplot(fit = fit, data = data, palette = palette, title = title, pval = p.value,...)$plot+
           ggplot2::guides(colour = ggplot2::guide_legend(ncol = 1)),
-                       KM_model, df_split, KM_palette_list, names(KM_model),
-                       MoreArgs = list(pval = TRUE,
-                                       surv.scale = 'percent',
+                       KM_model, df_split, KM_palette_list, names(KM_model), p_value_list,
+                       MoreArgs = list(surv.scale = 'percent',
                                        xscale = 'd_y',
                                        xlab="Time in years",
                                        conf.int = TRUE),

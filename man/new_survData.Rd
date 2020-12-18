@@ -10,7 +10,8 @@ new_survData(
   event_column,
   descriptive_columns,
   factor_columns,
-  numeric_columns
+  numeric_columns,
+  weights
 )
 }
 \arguments{

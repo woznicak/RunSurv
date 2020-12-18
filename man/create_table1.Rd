@@ -10,6 +10,7 @@ create_table1(
   strata_variables = NULL,
   add_pvalue = TRUE,
   overall = "Overall",
+  digits = 2,
   ...
 )
 }

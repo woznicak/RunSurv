@@ -1,0 +1,39 @@
+Multivariate Cox model
+=====================================
+
+##
+
+```{r }
+vars_to_multivar <- setdiff(unique(c(important_single_variables,unlist(signif_vars$significant_vars_list))),
+                                   ignored_variables)
+cox_model <- build_surv_model(x = data_surv,
+                 variables = vars_to_multivar,
+                 model_type = 'coxph')
+broom::tidy(cox_model, exponentiate = TRUE) %>%
+  kable()
+
+
+```
+
+
+```{r }
+if(!is.na(wb)){
+
+  sheet_name <- paste0('multi_CoxPH')
+  sheet_name <- substring(sheet_name, 1, min(stringr::str_length(sheet_name), 31))
+
+  openxlsx::addWorksheet(wb,sheet = sheet_name)
+
+  openxlsx::writeData(wb,
+            sheet = sheet_name,
+            x = broom::tidy(cox_model, exponentiate = TRUE) ,
+            startCol = 1,
+            startRow = 3)
+
+
+      openxlsx::saveWorkbook(wb, xlsx_path, overwrite = TRUE)
+
+}
+
+```
+

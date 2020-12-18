@@ -12,3 +12,16 @@ test_that("Check type of table1",{
   expect_is(create_table1(x = lung_survData, strata_variables = 'sex'), 'table1')
 
 })
+
+
+test_that("Check type of table1 for weighted",{
+
+
+  expect_is(create_table_formula(x = lung_weighted_survData), 'formula')
+  expect_is(create_table1(x = lung_weighted_survData), 'table1')
+
+  ## table1 with strata
+  expect_is(create_table_formula(x = lung_weighted_survData, strata_variables = 'sex'), 'formula')
+  expect_is(create_table1(x = lung_weighted_survData, strata_variables = 'sex'), 'table1')
+
+})

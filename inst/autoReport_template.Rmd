@@ -12,6 +12,7 @@ params:
   group_variables: NULL
   ignored_variables: NULL
   strata_variables: NULL
+  create_model: TRUE
   path_to_script: NULL
   OS_rate_timepoint: 5*365.25
   xlsx_path: NULL
@@ -35,6 +36,7 @@ ignored_variables <- params$ignored_variables
 strata_variables <- params$strata_variables
 OS_rate_timepoint <- params$OS_rate_timepoint
 xlsx_path <- params$xlsx_path
+create_model <- params$create_model
 
 ```
 
@@ -95,156 +97,165 @@ for(var in important_single_variables){
 options(knitr.duplicate.label = 'allow')
 
 if(!is.null(group_variables)){
-  
-  out <- c()
-  for(group_list in group_variables){
-    
-    subpage_env <- new.env()
 
+  out <- c()
+  page_id <- 1
+  for(group_list in group_variables){
+
+    subpage_env <- new.env()
+     assign('page_id', page_id)
      assign('data_surv', data_surv, subpage_env)
      assign("variable", group_list[['variable']], subpage_env)
      assign("group", group_list[['group']], subpage_env)
      assign('OS_rate_timepoint', OS_rate_timepoint, subpage_env)
      # Knit subpage.RMD using the subpage_env and add result to out vector
      out = c(out, knitr::knit_child('grouped_KM_template.Rmd', envir = subpage_env))
-    
+     page_id <- page_id+1
+
   }
 }
 ```
 
-`r paste(knitr::knit_child(text = out), collapse = '')` 
-
-Univariate Cox model
-=====================================
-
-## pvalue - univariate Cox
-
-```{r}
-signif_vars <- extract_signif_vars_cox (x = data_surv)
-kable(signif_vars$pvalue)
+`r paste(knitr::knit_child(text = out), collapse = '')`
 
 
-```
 
-## significant variable
+```{r render univariate_cox_model,  eval = create_model}
 
-```{r}
-kable(signif_vars$significant_vars_list$all)
-```
+options(knitr.duplicate.label = 'allow')
 
+if(!is.null(group_variables)){
 
-Multivariate Cox model
-=====================================
+  out <- c()
 
-##
-
-```{r}
-vars_to_multivar <- setdiff(unique(c(important_single_variables,unlist(signif_vars$significant_vars_list))),
-                                   ignored_variables)
-cox_model <- build_surv_model(x = data_surv,
-                 variables = vars_to_multivar,
-                 model_type = 'coxph')
-broom::tidy(cox_model, exponentiate = TRUE) %>%
-  kable()
-
-
-```
-
-
-```{r}
-if(!is.na(wb)){
-  
-  sheet_name <- paste0('multi_CoxPH')
-  sheet_name <- substring(sheet_name, 1, min(stringr::str_length(sheet_name), 31))
-  
-  openxlsx::addWorksheet(wb,sheet = sheet_name)
-  
-  openxlsx::writeData(wb,
-            sheet = sheet_name,
-            x = broom::tidy(cox_model, exponentiate = TRUE) ,
-            startCol = 1,
-            startRow = 3)
- 
-
-      openxlsx::saveWorkbook(wb, xlsx_path, overwrite = TRUE)
+    univariate_cox_env <- new.env()
+     assign('data_surv', data_surv, univariate_cox_env)
+     # Knit subpage.RMD using the subpage_env and add result to out vector
+     out = c(out, knitr::knit_child('univariate_cox_template.Rmd', envir = univariate_cox_env))
+     
+     signif_vars <- get('signif_vars', univariate_cox_env)
 
 }
-
 ```
 
-
-Multivariate Cox model - grouped
-=====================================
-
-##
-
-```{r  results='asis'}
-vars_to_multivar <- setdiff(unique(c(important_single_variables,unlist(signif_vars$significant_vars_list))),
-                                   ignored_variables)
-cox_model_list <- build_surv_model(x = data_surv,
-                 variables = vars_to_multivar,
-                 model_type = 'coxph',
-                 group_by = strata_variables)
-
-  if(!is.na(wb)){
-  
-  sheet_name <- paste0('multi_CoxPH_grouped')
-  openxlsx::addWorksheet(wb,sheet = sheet_name)
-  }
+`r if(create_model) paste(knitr::knit_child(text = out), collapse = '')`
 
 
-for(i in seq_along(cox_model_list)){
-  cat('###', names(cox_model_list)[i], '\n\n')
-  
-  kable(broom::tidy(cox_model_list[[i]], exp=TRUE)) %>% print()
-  
-    if(!is.na(wb)){
-      
-        openxlsx::writeData(wb,
-              sheet = sheet_name,
-              x = names(cox_model_list)[i],
-              startCol = 5*(i-1)+2,
-              startRow = 1)
-  
-    openxlsx::writeData(wb,
-              sheet = sheet_name,
-              x = broom::tidy(cox_model_list[[i]], exp=TRUE),
-              startCol = 5*(i-1)+2,
-              startRow = 2)
-   
-  
-        openxlsx::saveWorkbook(wb, xlsx_path, overwrite = TRUE)
-  
-  }
-  
-  
-  cat('\n')
+<!-- Multivariate Cox model -->
+
+```{r render multivariate_cox_model,  eval = create_model}
+
+options(knitr.duplicate.label = 'allow')
+
+if(!is.null(group_variables)){
+
+  out <- c()
+
+    multivariate_cox_env <- new.env()
+     assign('data_surv', data_surv, multivariate_cox_env)
+     assign('important_single_variables', important_single_variables, multivariate_cox_env)
+     assign('signif_vars', signif_vars, multivariate_cox_env)
+     assign('ignored_variables', ignored_variables, multivariate_cox_env)
+     assign('xlsx_path', xlsx_path, multivariate_cox_env)
+     assign('wb', wb, multivariate_cox_env)
+     
+     
+     # Knit subpage.RMD using the subpage_env and add result to out vector
+     out = c(out, knitr::knit_child('multivariate_cox_template.Rmd', envir = multivariate_cox_env))
+     
+     
+
 }
-
-# lapply(cox_model_list, function(x) kable(broom::tidy(x, exponentiate = TRUE)))
-
-
-
 ```
 
+`r if(create_model) paste(knitr::knit_child(text = out), collapse = '')`
 
-<!-- Multivariate Cox model - strata -->
+
+<!-- Multivariate Cox model - grouped -->
+```{r render multivariate_cox_grouped_model,  eval = create_model}
+
+options(knitr.duplicate.label = 'allow')
+
+if(!is.null(group_variables)){
+
+  out <- c()
+
+    multivariate_cox_env <- new.env()
+     assign('data_surv', data_surv, multivariate_cox_env)
+     assign('important_single_variables', important_single_variables, multivariate_cox_env)
+     assign('signif_vars', signif_vars, multivariate_cox_env)
+     assign('ignored_variables', ignored_variables, multivariate_cox_env)
+     assign('strata_variables', strata_variables, multivariate_cox_env)
+     assign('xlsx_path', xlsx_path, multivariate_cox_env)
+     assign('wb', wb, multivariate_cox_env)
+
+     
+     
+     # Knit subpage.RMD using the subpage_env and add result to out vector
+     out = c(out, knitr::knit_child('multivariate_cox_grouped_template.Rmd', envir = multivariate_cox_env))
+     
+     
+
+}
+```
+
+`r if(create_model) paste(knitr::knit_child(text = out), collapse = '')`
+
+
 <!-- ===================================== -->
 
 <!-- ## -->
 
-<!-- ```{r} -->
+<!-- ```{r  results='asis', eval=create_model} -->
 <!-- vars_to_multivar <- setdiff(unique(c(important_single_variables,unlist(signif_vars$significant_vars_list))), -->
 <!--                                    ignored_variables) -->
-<!-- cox_model <- build_surv_model(x = data_surv, -->
+<!-- cox_model_list <- build_surv_model(x = data_surv, -->
 <!--                  variables = vars_to_multivar, -->
-<!--                  strata_variables = strata_variables, -->
-<!--                  model_type = 'coxph') -->
-<!-- broom::tidy(cox_model) %>% -->
-<!--   kable() -->
+<!--                  model_type = 'coxph', -->
+<!--                  group_by = strata_variables) -->
+
+<!--   if(!is.na(wb)){ -->
+
+<!--   sheet_name <- paste0('multi_CoxPH_grouped') -->
+<!--   openxlsx::addWorksheet(wb,sheet = sheet_name) -->
+<!--   } -->
+
+
+<!-- for(i in seq_along(cox_model_list)){ -->
+<!--   cat('###', names(cox_model_list)[i], '\n\n') -->
+
+<!--   kable(broom::tidy(cox_model_list[[i]], exp=TRUE)) %>% print() -->
+
+<!--     if(!is.na(wb)){ -->
+
+<!--         openxlsx::writeData(wb, -->
+<!--               sheet = sheet_name, -->
+<!--               x = names(cox_model_list)[i], -->
+<!--               startCol = 5*(i-1)+2, -->
+<!--               startRow = 1) -->
+
+<!--     openxlsx::writeData(wb, -->
+<!--               sheet = sheet_name, -->
+<!--               x = broom::tidy(cox_model_list[[i]], exp=TRUE), -->
+<!--               startCol = 5*(i-1)+2, -->
+<!--               startRow = 2) -->
+
+
+<!--         openxlsx::saveWorkbook(wb, xlsx_path, overwrite = TRUE) -->
+
+<!--   } -->
+
+
+<!--   cat('\n') -->
+<!-- } -->
+
+<!-- # lapply(cox_model_list, function(x) kable(broom::tidy(x, exponentiate = TRUE))) -->
+
 
 
 <!-- ``` -->
+
+
 
 
 ```{r child = params$path_to_script}

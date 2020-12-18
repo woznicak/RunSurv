@@ -44,7 +44,7 @@ grid_KM
 ### Table
 ```{r}
 
-kable(object_var$OS_table) 
+kable(object_var$OS_table)
 
 ```
 
@@ -68,7 +68,7 @@ kable(pairwise_models)
 ```{r}
 if(!is.na(wb)){
   
-  sheet_name <- paste0('multi_KM_', variable)
+  sheet_name <- paste0(page_id, '_multi_KM_', variable)
   sheet_name <- substring(sheet_name, 1, min(stringr::str_length(sheet_name), 31))
   
   openxlsx::addWorksheet(wb,sheet = sheet_name)
@@ -103,7 +103,7 @@ if(!is.na(wb)){
     print(grid_KM)
   openxlsx::insertPlot(wb, sheet_name, xy = c(ncol(object_var$OS_table) + 3, 3), width = 30, height = 20, fileType = "png", units = "cm")
 
-  writeData(wb, sheet_name, "Pairwise comparison of KM curves", 
+  openxlsx::writeData(wb, sheet_name, "Pairwise comparison of KM curves", 
             startCol = 1, 
             startRow = 3+ nrow(object_var$OS_table) + 2)
     openxlsx::writeData(wb,

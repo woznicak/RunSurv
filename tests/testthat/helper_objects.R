@@ -15,3 +15,12 @@ lung_survData <- survData(data = lung,
 
 
 surv_fm <- create_surv_formula(lung_survData, variables = c('ph.ecog', 'sex'))
+
+
+## weighted
+lung_weighted <- lung
+lung_weighted$weights_psm <- predict(glm(lump_var~age+sex, lung, family = 'binomial'), type = 'response')
+lung_weighted_survData <- survData(data = lung_weighted,
+                          time_column = 'time',
+                          event_column = 'status',
+                          weights = 'weights_psm')

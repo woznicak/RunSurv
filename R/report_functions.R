@@ -10,9 +10,12 @@ makeSurvReport <- function(x,
                            OS_rate_timepoint = 5*365.25,
                            path_to_script = NULL,
                            ignored_variables = NULL,
-                           xlsx_path = NULL){
+                           xlsx_path = NULL,
+                           create_model = TRUE){
 
   file <- system.file("autoReport_template.Rmd", package = 'RunSurv')
+  print(group_variables)
+
   rmarkdown::render(input = file,
                     output_file = output_file,
                     params = list(data_surv = x,
@@ -23,5 +26,6 @@ makeSurvReport <- function(x,
                                   path_to_script = path_to_script,
                                   OS_rate_timepoint = OS_rate_timepoint,
                                   ignored_variables = ignored_variables,
-                                  xlsx_path = xlsx_path))
+                                  xlsx_path = xlsx_path,
+                                  create_model = create_model))
 }

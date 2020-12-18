@@ -10,6 +10,7 @@ build_pairwise_logrank(
   strata_variables = NULL,
   group_by = NULL,
   pivot_wider = FALSE,
+  p.adjust.method = "BH",
   ...
 )
 }

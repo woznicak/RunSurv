@@ -5,20 +5,29 @@ create_table1 <- function(x,
                           strata_variables = NULL,
                           add_pvalue = TRUE,
                           overall = "Overall",
+                          digits=2,
                           ...){
   formula_table1 <- create_table_formula(x, variables, strata_variables)
+  weights_var <- x$weights
+  df <- x$data
+
+
+
+  # rndr.continous <- table1::render.continuous.default
 
   if(!is.null(strata_variables)){
 
-    df <- x$data
+
     no_cat <- length(unique(df[, strata_variables]))
     uniq_cat <- sort(paste(unique(df[, strata_variables])))
+
+
 
     if(add_pvalue){
       df[, strata_variables] <- factor(df[, strata_variables], levels = c(uniq_cat, 'pvalue'))
       # function to add p-value
       # https://cran.r-project.org/web/packages/table1/vignettes/table1-examples.html#a-column-of-p-values
-      rndr <- function(x, name, ...) {
+      render_pvalue <- function(x, name, render.continuous = render.continuous.default, ...) {
         # browser()
         if (length(x) == 0) {
           y <- df[[name]]
@@ -43,9 +52,17 @@ create_table1 <- function(x,
           }
           s
         } else {
-          table1::render.default(x=x, name=name, ...)
+          table1::render.default(x=x, name=name,
+                                 #render.continuous = table1::render.continuous.default,
+                                 ...)
         }
       }
+
+
+
+      rndr <- render_pvalue
+
+
 
       rndr.strat <- function(label, n, ...) {
         ifelse(n==0, label, table1::render.strat.default(label, n, ...))
@@ -56,12 +73,16 @@ create_table1 <- function(x,
 
     }else{
       list_args <- list(x = formula_table1,
-                        data=df, droplevels=FALSE, overall=overall, ...)
+                        data=df, droplevels=FALSE, overall=overall,
+                        # render.continuous = rndr.continous,
+                        ...)
     }
 
   }else{
     list_args <- list(x = formula_table1,
-                      data=x$data,  ...)
+                      data=x$data,
+                      # render.continuous = rndr.continous,
+                      ...)
   }
 
   do.call(table1::table1, list_args)

@@ -1,0 +1,17 @@
+Univariate Cox model
+=====================================
+
+## pvalue - univariate Cox
+
+```{r }
+signif_vars <- extract_signif_vars_cox (x = data_surv)
+kable(signif_vars$pvalue)
+
+
+```
+
+## significant variable
+
+```{r }
+kable(signif_vars$significant_vars_list$all)
+```

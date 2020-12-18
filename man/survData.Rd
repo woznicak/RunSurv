@@ -4,7 +4,13 @@
 \alias{survData}
 \title{new class}
 \usage{
-survData(data, time_column, event_column, descriptive_columns = NULL)
+survData(
+  data,
+  time_column,
+  event_column,
+  descriptive_columns = NULL,
+  weights = NULL
+)
 }
 \arguments{
 \item{data}{A number.}

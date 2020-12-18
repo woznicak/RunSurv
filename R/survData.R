@@ -9,7 +9,8 @@ new_survData <- function(data,
                          event_column,
                          descriptive_columns,
                          factor_columns,
-                         numeric_columns){
+                         numeric_columns,
+                         weights){
 
 
 
@@ -18,7 +19,8 @@ new_survData <- function(data,
                  event_column = event_column,
                  descriptive_columns = descriptive_columns,
                  factor_columns = factor_columns,
-                 numeric_columns = numeric_columns),
+                 numeric_columns = numeric_columns,
+                 weights = weights),
             class = 'survData')
 
 }
@@ -45,7 +47,8 @@ validate_survData <- function(x){
 survData <- function(data,
                      time_column,
                      event_column,
-                     descriptive_columns = NULL){
+                     descriptive_columns = NULL,
+                     weights = NULL){
   # browser()
   stopifnot(is.data.frame(data))
   stopifnot(is.character(time_column))
@@ -66,9 +69,34 @@ survData <- function(data,
                     event_column,
                     descriptive_columns,
                     factor_columns,
-                    numeric_columns)
+                    numeric_columns,
+                    weights)
 
   validate_survData(x)
   x
+
+}
+
+#' @export
+split.survData <- function(x, f, ...){
+  df_split <- split(x$data, f, ...)
+  lapply(df_split, function(df_split_i) survData(data = df_split_i,
+                                time_column = x$time_column,
+                                event_column = x$event_column,
+                                descriptive_columns = x$descriptive_columns,
+                                weights = x$weights))
+
+
+}
+
+#' @export
+subset.survData <- function(x, subset, ...){
+  df_subset <- subset(x$data, subset = subset, ...)
+ survData(data = df_subset,
+          time_column = x$time_column,
+          event_column = x$event_column,
+          descriptive_columns = x$descriptive_columns,
+          weights = x$weights)
+
 
 }

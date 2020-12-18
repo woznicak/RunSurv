@@ -1,0 +1,123 @@
+```{r}
+header_multivar <- list(paste0('Group: ', paste0(group, collapse = '::')),
+           paste0('Var: ', variable))
+```
+
+    
+`r paste0(header_multivar[[2]], ' ', header_multivar[[1]])` {data-navmenu="PSM" }
+====================================== 
+    
+```{r}    
+    object_var <- extract_OS_rate(x = data_surv,
+                              variable = variable,
+                              group = group,
+                              times = OS_rate_timepoint,
+                              simplify_label = TRUE)
+
+```
+
+<!-- Row {data-width=1050} -->
+<!-- ------------------------------------- -->
+
+### KM plots 
+
+```{r fig.height=10, fig.width=20, fig.align='center', out.width=70}
+    
+grid_KM <-  ggpubr::ggarrange(plotlist = object_var$plots,
+                      legend.grob = object_var$legend_object,
+                      ncol = 3, nrow = ceiling(length(object_var$plots) / 3),
+                   hjust = 2)
+grid_KM
+# 
+# pic_path <- 'tmp.png'
+# png(pic_path)
+# grid_KM
+# dev.off()
+  
+    
+
+```
+
+<!-- Row {data-height=1050} -->
+<!-- ------------------------------------- -->
+
+### Table
+```{r}
+
+kable(object_var$OS_table) 
+
+```
+
+### Pairwise comparison
+
+Values in table are p-values for each subset data between group 1 and group 2.
+
+```{r}
+
+pairwise_models <- build_pairwise_logrank(data_surv,
+                      variables =variable,
+                      group_by = group,
+                      p.adjust.method = 'fdr',
+                      pivot_wider = FALSE
+                       )
+kable(pairwise_models)
+```
+
+
+
+<!-- ```{r} -->
+<!-- if(!is.na(wb)){ -->
+
+<!--   sheet_name <- paste0('multi_KM_', variable) -->
+<!--   sheet_name <- substring(sheet_name, 1, min(stringr::str_length(sheet_name), 31)) -->
+
+<!--   openxlsx::addWorksheet(wb,sheet = sheet_name) -->
+
+<!--   header_multivar -->
+
+<!--     openxlsx::writeData(wb, -->
+<!--             sheet = sheet_name, -->
+<!--             x = header_multivar[[1]], -->
+<!--             startCol = 1, -->
+<!--             startRow = 1) -->
+
+<!--         openxlsx::writeData(wb, -->
+<!--             sheet = sheet_name, -->
+<!--             x = header_multivar[[2]], -->
+<!--             startCol = 1, -->
+<!--             startRow = 2) -->
+
+<!--   openxlsx::writeData(wb, -->
+<!--             sheet = sheet_name, -->
+<!--             x = object_var$OS_table, -->
+<!--             startCol = 1, -->
+<!--             startRow = 3) -->
+<!--   # openxlsx::saveWorkbook(wb, xlsx_path, overwrite = TRUE) -->
+
+<!--   # openxlsx::insertImage(wb,  -->
+<!--   #                       sheet_name, -->
+<!--   #                       pic_path, -->
+<!--   #                       startRow = 3, -->
+<!--   #                       startCol = ncol(object_var$OS_table) + 3) -->
+
+<!--     print(grid_KM) -->
+<!--   openxlsx::insertPlot(wb, sheet_name, xy = c(ncol(object_var$OS_table) + 3, 3), width = 30, height = 20, fileType = "png", units = "cm") -->
+
+<!--   openxlsx::writeData(wb, sheet_name, "Pairwise comparison of KM curves",  -->
+<!--             startCol = 1,  -->
+<!--             startRow = 3+ nrow(object_var$OS_table) + 2) -->
+<!--     openxlsx::writeData(wb, -->
+<!--             sheet = sheet_name, -->
+<!--             x = pairwise_models, -->
+<!--             startCol = 1, -->
+<!--             startRow = 3+nrow(object_var$OS_table) + 3) -->
+
+<!--      # unlink(pic_path) -->
+
+<!--       openxlsx::saveWorkbook(wb, xlsx_path, overwrite = TRUE) -->
+
+<!-- } -->
+
+<!-- ``` -->
+
+

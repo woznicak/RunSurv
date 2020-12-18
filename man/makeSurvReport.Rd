@@ -14,7 +14,8 @@ makeSurvReport(
   OS_rate_timepoint = 5 * 365.25,
   path_to_script = NULL,
   ignored_variables = NULL,
-  xlsx_path = NULL
+  xlsx_path = NULL,
+  create_model = TRUE
 )
 }
 \description{
